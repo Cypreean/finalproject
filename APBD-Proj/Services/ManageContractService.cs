@@ -14,15 +14,18 @@ public interface IManageContractService
 public class ManageContractService (DatabaseContext context) : IManageContractService
 {
     public async Task<ContractRequestModel> CreateContract(ContractRequestModel contractRequestModel)
+{
+    using var transaction = await context.Database.BeginTransactionAsync();
+    try
     {
         var customer = await context.Customers.FirstOrDefaultAsync(e => e.Pesel == contractRequestModel.Pesel);
         var company = await context.Companies.FirstOrDefaultAsync(e => e.KRS == contractRequestModel.KRS);
-        
+
         if (customer == null && company == null)
         {
             throw new NotFoundException("Klient nie istnieje.");
         }
-        
+
         var clientId = customer?.IdCustomer ?? company.IdCompany;
         var activeContracts = await context.Contracts
             .AnyAsync(e => (e.IdCustomer == clientId || e.IdCompany == clientId) && e.IdSoftware == contractRequestModel.SoftwareId && e.EndDate > DateTime.Now);
@@ -31,49 +34,48 @@ public class ManageContractService (DatabaseContext context) : IManageContractSe
         {
             throw new BadHttpRequestException("Klient ma już aktywną subskrypcję lub umowę na ten produkt.");
         }
-        
+
         if ((contractRequestModel.EndDate - contractRequestModel.StartDate).TotalDays < 3 ||
             (contractRequestModel.EndDate - contractRequestModel.StartDate).TotalDays > 30)
         {
             throw new BadHttpRequestException("Przedział czasowy umowy powinien wynosić co najmniej 3 dni i maksymalnie 30 dni.");
         }
+
         decimal totalAmount = contractRequestModel.Price;
         var discounts = await context.Discounts
             .Where(e => e.StartDate <= DateTime.Now && e.EndDate >= DateTime.Now)
             .OrderByDescending(e => e.Percentage)
             .ToListAsync();
-        
+
         var discountId = discounts.FirstOrDefault()?.IdDiscount;
 
         if (discounts.Any())
         {
             totalAmount -= totalAmount * (discounts.First().Percentage / 100);
         }
-        
+
         var hasPreviousContracts = await context.Contracts
             .AnyAsync(e => (e.IdCustomer == clientId || e.IdCompany == clientId) && e.IsPaid);
-    
+
         if (hasPreviousContracts)
         {
             totalAmount -= totalAmount * (decimal)0.05;
         }
-        
+
         if (contractRequestModel.AdditionalSupportYears > 0)
         {
             totalAmount += 1000 * contractRequestModel.AdditionalSupportYears;
         }
-        
-       
+
         var software = await context.Softwares.FirstOrDefaultAsync(e => e.IdSoftware == contractRequestModel.SoftwareId);
         if (software == null)
         {
             throw new NotFoundException("Oprogramowanie nie istnieje.");
         }
-        
-        
+
         var contract = new Contracts
-        { 
-            IdCustomer= customer?.IdCustomer,
+        {
+            IdCustomer = customer?.IdCustomer,
             IdCompany = company?.IdCompany,
             IdSoftware = contractRequestModel.SoftwareId,
             StartDate = contractRequestModel.StartDate,
@@ -84,13 +86,19 @@ public class ManageContractService (DatabaseContext context) : IManageContractSe
             IdDiscount = discountId,
             YearsOfSupport = contractRequestModel.AdditionalSupportYears + 1
         };
-        
+
         context.Contracts.Add(contract);
         await context.SaveChangesAsync();
-        
+        await transaction.CommitAsync();
+
         return contractRequestModel;
-        
     }
+    catch (Exception e)
+    {
+        await transaction.RollbackAsync();
+        throw new Exception(e.Message);
+    }
+}
     
     public async Task<PaymentRequestModel> AddPayment(PaymentRequestModel paymentRequestModel)
     {

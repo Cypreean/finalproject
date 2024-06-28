@@ -17,7 +17,7 @@ public class CompanyEndpoints : ControllerBase
     }
     
     [HttpPost]
-    [Authorize(Roles = "user")]
+    [Authorize(Roles = "admin,user" )]
     public async Task<IActionResult> AddCompany(CompanyRequestModel companyRequestModel)
     {
         try

@@ -47,18 +47,27 @@ public class ManageCompanyService (DatabaseContext context) : IManageCompanyServ
     
     public async Task<Companies> UpdateCompany(long Krs, UpdateCompanyRequestModel updateCompanyRequestModel)
     {
-        var company = await context.Companies.FirstOrDefaultAsync(e => Equals(e.KRS, Krs));
-        if (company is null)
+        using var transaction = await context.Database.BeginTransactionAsync();
+        try
         {
-            throw new NotFoundException($"Company with Krs:{Krs} does not exist");
+            var company = await context.Companies.FirstOrDefaultAsync(e => e.KRS == Krs);
+            if (company is null)
+            {
+                throw new NotFoundException($"Company with KRS:{Krs} does not exist");
+            }
+            company.Name = updateCompanyRequestModel.Name;
+            company.Address = updateCompanyRequestModel.Address;
+            company.Email = updateCompanyRequestModel.Email;
+            company.PhoneNumber = updateCompanyRequestModel.PhoneNumber;
+            await context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return company;
         }
-        company.Name = updateCompanyRequestModel.Name;
-        company.Address = updateCompanyRequestModel.Address;
-        company.Email = updateCompanyRequestModel.Email;
-        company.PhoneNumber = updateCompanyRequestModel.PhoneNumber;
-        await context.SaveChangesAsync();
-        
-        return company;
+        catch (Exception e)
+        {
+            await transaction.RollbackAsync();
+            throw new Exception(e.Message);
+        }
     }
 }
 

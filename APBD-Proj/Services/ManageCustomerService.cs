@@ -17,7 +17,10 @@ public class ManageCustomerService (DatabaseContext context) : IManageCustomerSe
 {
     
 
-        public async Task<CustomerRequestModel> AddCustomer(CustomerRequestModel customer)
+    public async Task<CustomerRequestModel> AddCustomer(CustomerRequestModel customer)
+    {
+        using var transaction = await context.Database.BeginTransactionAsync();
+        try
         {
             var customerExists = await context.Customers.FirstOrDefaultAsync(e => e.Pesel == customer.Pesel);
             if (customerExists != null)
@@ -36,42 +39,69 @@ public class ManageCustomerService (DatabaseContext context) : IManageCustomerSe
 
             context.Customers.Add(newCustomer);
             await context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return customer;
         }
+        catch (Exception e)
+        {
+            await transaction.RollbackAsync();
+            throw new Exception(e.Message);
+        }
+    }
 
         public async Task<Customers> DeleteCustomer(long pesel)
         {
-            var customer = await context.Customers.FirstOrDefaultAsync(e => e.Pesel == pesel);
-            if (customer is null)
+            using var transaction = await context.Database.BeginTransactionAsync();
+            try
             {
-                throw new NotFoundException($"Customer with Pesel:{pesel} does not exist");
+                var customer = await context.Customers.FirstOrDefaultAsync(e => e.Pesel == pesel);
+                if (customer is null)
+                {
+                    throw new NotFoundException($"Customer with Pesel:{pesel} does not exist");
+                }
+
+                customer.IsDeleted = true;
+                context.Customers.Update(customer);
+                await context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return customer;
             }
-
-            customer.IsDeleted = true;
-            context.Customers.Update(customer);
-            await context.SaveChangesAsync();
-
-            return customer;
+            catch (Exception e)
+            {
+                await transaction.RollbackAsync();
+                throw new Exception(e.Message);
+            }
         }
 
         public async Task<UpdateCustomerRequestModel> UpdateCustomer(long pesel, UpdateCustomerRequestModel customer)
         {
-            var existingCustomer = await context.Customers.FirstOrDefaultAsync(e => e.Pesel == pesel);
-            if (existingCustomer is null)
+            using var transaction = await context.Database.BeginTransactionAsync();
+            try
             {
-                throw new NotFoundException($"Customer with Pesel:{pesel} does not exist");
+                var existingCustomer = await context.Customers.FirstOrDefaultAsync(e => e.Pesel == pesel);
+                if (existingCustomer is null)
+                {
+                    throw new NotFoundException($"Customer with Pesel:{pesel} does not exist");
+                }
+
+                existingCustomer.FirstName = customer.FirstName;
+                existingCustomer.LastName = customer.LastName;
+                existingCustomer.Email = customer.Email;
+                existingCustomer.PhoneNumber = customer.PhoneNumber;
+
+                context.Customers.Update(existingCustomer);
+                await context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return customer;
             }
-
-            existingCustomer.FirstName = customer.FirstName;
-            existingCustomer.LastName = customer.LastName;
-            existingCustomer.Email = customer.Email;
-            existingCustomer.PhoneNumber = customer.PhoneNumber;
-
-            context.Customers.Update(existingCustomer);
-            await context.SaveChangesAsync();
-
-            return customer;
+            catch (Exception e)
+            {
+                await transaction.RollbackAsync();
+                throw new Exception(e.Message);
+            }
         }
     
 }

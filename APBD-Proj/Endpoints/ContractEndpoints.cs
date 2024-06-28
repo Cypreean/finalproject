@@ -17,7 +17,7 @@ public class ContractEndpoints : ControllerBase
     }
     
     [HttpPost]
-    [Authorize(Roles = "user")]
+    [Authorize(Roles = "admin,user" )]
     public async Task<IActionResult> AddContract(ContractRequestModel contractRequestModel)
     {
         try
@@ -35,7 +35,7 @@ public class ContractEndpoints : ControllerBase
     }
     
     [HttpPost("payments")]
-    
+    [Authorize(Roles = "admin,user" )]
     public async Task<IActionResult> AddPayment(PaymentRequestModel paymentRequestModel)
     {
         try

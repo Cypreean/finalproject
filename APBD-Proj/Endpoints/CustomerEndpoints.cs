@@ -16,7 +16,7 @@ public class CustomerEndpoints : ControllerBase
     }
     
     [HttpPost]
-    [Authorize(Roles = "user")]
+    [Authorize(Roles = "admin,user" )]
     public async Task<IActionResult> AddCustomer(CustomerRequestModel customer)
     {
         try
@@ -30,7 +30,7 @@ public class CustomerEndpoints : ControllerBase
     }
     
     [HttpDelete("{pesel:long}")]
-    
+    [Authorize(Roles = "admin" )]
     public async Task<IActionResult> DeleteCustomer(long pesel)
     {
         try

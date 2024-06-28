@@ -16,7 +16,7 @@ public class SubscriptionEndpoints : ControllerBase
     }
     
     [HttpPost]
-    [Authorize(Roles = "user")]
+    [Authorize(Roles = "admin,user" )]
     public async Task<IActionResult> AddSubscription(SubscriptionRequestModel subscriptionRequestModel)
     {
         try
@@ -34,7 +34,7 @@ public class SubscriptionEndpoints : ControllerBase
     }
     
     [HttpPost("payments")]
-    [Authorize(Roles = "user")]
+    [Authorize(Roles = "admin,user" )]
     public async Task<IActionResult> AddPayment(SubscriptionPaymentRequestModel paymentRequestModel)
     {
         try

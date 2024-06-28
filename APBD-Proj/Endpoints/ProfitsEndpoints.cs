@@ -16,7 +16,7 @@ public class ProfitsEndpoints : ControllerBase
     }
     
     [HttpPost]
-    [Authorize(Roles = "user")]
+    [Authorize(Roles = "admin,user" )]
     public async Task<IActionResult> GetCompanyProfits(ProfitRequestModel profitRequestModel)
     {
         try
@@ -29,7 +29,7 @@ public class ProfitsEndpoints : ControllerBase
         }
     }
     [HttpPost("expected")]
-    [Authorize(Roles = "user")]
+    [Authorize(Roles = "admin,user" )]
     public async Task<IActionResult> GetExpectedProfits()
     {
         try
